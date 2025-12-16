@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,25 @@ import { useSearchParams } from "next/navigation"
 type Theme = "fantasy" | "scifi" | "zombie" | "sports" | "healing"
 
 export default function ResultPage() {
+  return (
+    <Suspense fallback={<ResultLoading />}>
+      <ResultContent />
+    </Suspense>
+  )
+}
+
+function ResultLoading() {
+  return (
+    <main className="min-h-screen epic-gradient flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <p>로딩 중...</p>
+      </div>
+    </main>
+  )
+}
+
+function ResultContent() {
   const searchParams = useSearchParams()
 
   const reps = Number(searchParams.get("reps") ?? 0)
