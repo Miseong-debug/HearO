@@ -62,13 +62,13 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <Link href="/exercise">
+          <Link href="/adventure">
             <Button
               size="lg"
               className="h-14 px-8 text-lg bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground font-semibold shadow-[0_0_30px_oklch(0.7_0.25_260_/_0.5)] hover:scale-105 transition-all"
             >
               <Play className="w-5 h-5 mr-2" />
-              운동 시작하기
+              모험 시작하기
             </Button>
           </Link>
           <Link href="/history">
@@ -106,7 +106,7 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-semibold mb-2">AI 스토리 생성</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Gemini AI가 운동 결과를 바탕으로 나만의 RPG 영웅 서사를 만들어줍니다.
+                Gemini AI가 만든 스토리 속에서 운동으로 적을 물리치고 모험을 진행하세요.
               </p>
             </CardContent>
           </Card>
@@ -135,12 +135,12 @@ export default function Home() {
             <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
               지금 바로 시작하세요. 카메라만 있으면 어디서든 재활 운동을 할 수 있습니다.
             </p>
-            <Link href="/exercise">
+            <Link href="/adventure">
               <Button
                 size="lg"
                 className="h-12 px-6 bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground font-semibold shadow-[0_0_24px_oklch(0.7_0.25_260_/_0.5)] hover:scale-105 transition-all"
               >
-                무료로 시작하기
+                모험 시작하기
                 <ChevronRight className="w-5 h-5 ml-1" />
               </Button>
             </Link>
