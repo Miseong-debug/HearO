@@ -4,9 +4,11 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity, Flame, PauseCircle, PlayCircle, Target, Volume2, VolumeX, Camera as CameraIcon, Trophy, Minus, Plus } from "lucide-react"
+import { Activity, Flame, PauseCircle, PlayCircle, Target, Volume2, VolumeX, Camera as CameraIcon, Trophy, Minus, Plus, Sparkles } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useVoiceGuide } from "./hooks/useVoiceGuide"
+import WorldviewSelector from "@/components/WorldviewSelector"
+import { WORLDVIEW_LIST, type Worldview } from "@/lib/story/worldviews"
 
 // Camera 컴포넌트를 클라이언트에서만 로드 (MediaPipe는 SSR 불가)
 const Camera = dynamic(() => import("./camera"), { ssr: false })
@@ -22,6 +24,9 @@ export default function ExercisePage() {
   const [targetReps, setTargetReps] = useState(10)
   const [isTargetReached, setIsTargetReached] = useState(false)
   const [isVoiceGuideOn, setIsVoiceGuideOn] = useState(false)
+  const [selectedWorldview, setSelectedWorldview] = useState<Worldview>(WORLDVIEW_LIST[0])
+  const [userName, setUserName] = useState("용사")
+  const [chapter, setChapter] = useState(1)
 
   const voiceGuide = useVoiceGuide()
   const lastPostureWarningRef = useRef(0)
@@ -74,8 +79,17 @@ export default function ExercisePage() {
       voiceGuide.announceFinish(reps, quality)
     }
     // 음성이 끝난 후 이동하도록 약간 딜레이
+    const params = new URLSearchParams({
+      reps: String(reps),
+      score: String(quality),
+      duration: String(duration),
+      targetReps: String(targetReps),
+      worldview: selectedWorldview.id,
+      userName: userName,
+      chapter: String(chapter),
+    })
     setTimeout(() => {
-      router.push(`/result?reps=${reps}&score=${quality}&duration=${duration}&theme=fantasy`)
+      router.push(`/result?${params.toString()}`)
     }, isVoiceGuideOn ? 2000 : 0)
   }
 
@@ -303,6 +317,25 @@ export default function ExercisePage() {
                 세션 종료 및 결과 보기
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 세계관 선택 */}
+        <Card className="backdrop-blur-xl bg-card/30 border border-border/30 rounded-3xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Sparkles className="w-4 h-4 text-primary" />
+              스토리 세계관
+            </CardTitle>
+            <CardDescription className="text-xs">
+              운동 후 생성될 스토리의 세계관을 선택하세요
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WorldviewSelector
+              selectedId={selectedWorldview.id}
+              onSelect={setSelectedWorldview}
+            />
           </CardContent>
         </Card>
 

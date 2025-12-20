@@ -5,10 +5,20 @@ import Image from "next/image"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Home, Loader2, Play, RefreshCw, Volume2 } from "lucide-react"
+import { BookOpen, Home, Loader2, Play, RefreshCw, Volume2, Sparkles } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 
-type Theme = "fantasy" | "scifi" | "zombie" | "sports" | "healing"
+type StoryResult = {
+  story: string
+  worldview: string
+  progress: {
+    level: string
+    progressPercent: number
+    description: string
+  }
+  imagePrompt: string
+  chapter: number
+}
 
 export default function ResultContent() {
   const searchParams = useSearchParams()
@@ -16,11 +26,15 @@ export default function ResultContent() {
   const reps = Number(searchParams.get("reps") ?? 0)
   const score = Number(searchParams.get("score") ?? 0)
   const duration = Number(searchParams.get("duration") ?? 0)
-  const themeParam = (searchParams.get("theme") ?? "fantasy") as Theme
+  const targetReps = Number(searchParams.get("targetReps") ?? 10)
+  const worldviewId = searchParams.get("worldview") ?? "fantasy"
+  const userName = searchParams.get("userName") ?? "용사"
+  const chapter = Number(searchParams.get("chapter") ?? 1)
 
-  const [theme] = useState<Theme>(themeParam)
   const [story, setStory] = useState<string>("")
+  const [storyResult, setStoryResult] = useState<StoryResult | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imageProvider, setImageProvider] = useState<string>("")
 
   const [loading, setLoading] = useState<boolean>(true)
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
@@ -35,28 +49,32 @@ export default function ResultContent() {
         const storyRes = await fetch("/api/generate/story", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ theme, reps, score, duration }),
+          body: JSON.stringify({
+            worldviewId,
+            reps,
+            score,
+            duration,
+            targetReps,
+            userName,
+            chapter,
+          }),
         })
-        const storyData = await storyRes.json()
+        const storyData: StoryResult = await storyRes.json()
         setStory(storyData.story ?? "")
+        setStoryResult(storyData)
 
-        // 2) 이미지 생성
-        const prompt = `
-Rehabilitation themed hero illustration.
-The character is doing calm rehab exercise, not intense workout.
-Theme: ${theme}
-Reps: ${reps}, Pose score: ${score}, Duration: ${duration} seconds.
-Style: soft glow, hopeful atmosphere, concept art quality, no text, dark background with subtle gradients.
-        `.trim()
+        // 2) 이미지 생성 (스토리 API에서 생성한 프롬프트 사용)
+        const imagePrompt = storyData.imagePrompt || `rehabilitation hero, ${worldviewId} theme, hopeful atmosphere`
 
         const imageRes = await fetch("/api/generate/image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({ prompt: imagePrompt }),
         })
 
         const imageData = await imageRes.json()
         setImageUrl(imageData.image ?? null)
+        setImageProvider(imageData.provider ?? "")
       } catch (error) {
         console.error("결과 생성 중 오류:", error)
       } finally {
@@ -65,7 +83,7 @@ Style: soft glow, hopeful atmosphere, concept art quality, no text, dark backgro
     }
 
     run()
-  }, [theme, reps, score, duration])
+  }, [worldviewId, reps, score, duration, targetReps, userName, chapter])
 
   // TTS 재생 (Web Speech API - 무료)
   const handlePlayTTS = () => {
@@ -102,15 +120,27 @@ Style: soft glow, hopeful atmosphere, concept art quality, no text, dark backgro
             <div>
               <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-primary" />
-                오늘의 영웅 서사
+                {storyResult?.worldview || "영웅 서사"} - {chapter}장
               </CardTitle>
-              <CardDescription>
-                오늘의 재활 운동 기록을 바탕으로 AI가 이미지와 이야기를 만들어줍니다.
+              <CardDescription className="flex items-center gap-2">
+                {storyResult?.progress && (
+                  <span className="inline-flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    {storyResult.progress.description}
+                  </span>
+                )}
               </CardDescription>
             </div>
-            <span className="px-3 py-1 rounded-full bg-muted/40 text-[11px] text-muted-foreground">
-              {theme.toUpperCase()} MODE
-            </span>
+            <div className="flex flex-col items-end gap-1">
+              <span className="px-3 py-1 rounded-full bg-primary/20 text-[11px] text-primary font-medium">
+                {storyResult?.worldview || worldviewId.toUpperCase()}
+              </span>
+              {storyResult?.progress && (
+                <span className="text-[10px] text-muted-foreground">
+                  진행도 {Math.round(storyResult.progress.progressPercent)}%
+                </span>
+              )}
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-4 relative z-10">
