@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Headphones, Play, Trophy, Sparkles, Activity, BookOpen, ChevronRight } from "lucide-react"
+import { Play, Trophy, Sparkles, Activity, BookOpen, Camera, Dumbbell, BookText, ChevronRight } from "lucide-react"
+import { Header } from "@/components/header"
 
 export default function Home() {
   return (
@@ -26,19 +27,7 @@ export default function Home() {
       </div>
 
       {/* 헤더 */}
-      <header className="relative z-10 flex items-center justify-between p-6 md:p-8">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center shadow-lg">
-            <Headphones className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight">HearO</span>
-        </div>
-        <Link href="/login">
-          <Button variant="outline" className="bg-muted/40 border-border/40 backdrop-blur-sm">
-            로그인
-          </Button>
-        </Link>
-      </header>
+      <Header />
 
       {/* 히어로 섹션 */}
       <section className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-16 md:py-24">
@@ -125,23 +114,189 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA 섹션 */}
+      {/* 작동 방식 섹션 */}
       <section className="relative z-10 px-6 pb-20">
-        <Card className="max-w-3xl mx-auto backdrop-blur-xl bg-card/40 border-border/40 rounded-3xl overflow-hidden">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">작동 방식</h2>
+          <p className="text-muted-foreground text-center mb-12">3단계로 시작하는 나만의 영웅 모험</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 mx-auto mb-4 flex items-center justify-center shadow-[0_0_30px_oklch(0.6_0.2_220_/_0.3)]">
+                <Camera className="w-10 h-10 text-white" />
+              </div>
+              <div className="text-4xl font-bold text-primary mb-2">1</div>
+              <h3 className="font-semibold mb-2">카메라 켜기</h3>
+              <p className="text-sm text-muted-foreground">웹캠을 허용하면 AI가 자세를 인식할 준비 완료</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mx-auto mb-4 flex items-center justify-center shadow-[0_0_30px_oklch(0.6_0.25_300_/_0.3)]">
+                <Dumbbell className="w-10 h-10 text-white" />
+              </div>
+              <div className="text-4xl font-bold text-secondary mb-2">2</div>
+              <h3 className="font-semibold mb-2">운동하기</h3>
+              <p className="text-sm text-muted-foreground">화면의 가이드를 따라 운동하면 실시간 점수 피드백</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 mx-auto mb-4 flex items-center justify-center shadow-[0_0_30px_oklch(0.7_0.2_60_/_0.3)]">
+                <BookText className="w-10 h-10 text-white" />
+              </div>
+              <div className="text-4xl font-bold text-accent mb-2">3</div>
+              <h3 className="font-semibold mb-2">스토리 진행</h3>
+              <p className="text-sm text-muted-foreground">운동을 완료하면 AI가 다음 스토리를 생성</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 화면 미리보기 섹션 */}
+      <section className="relative z-10 px-6 pb-20">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">실제 화면 미리보기</h2>
+          <p className="text-muted-foreground text-center mb-10">이렇게 운동하고, 스토리를 진행해요</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-3xl overflow-hidden">
+              <CardContent className="p-0">
+                <div className="aspect-video bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center relative">
+                  <div className="absolute inset-4 border-2 border-dashed border-primary/30 rounded-xl flex items-center justify-center">
+                    <div className="text-center">
+                      <Camera className="w-12 h-12 text-primary/50 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">운동 화면</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">실시간 포즈 인식 & 점수 표시</p>
+                    </div>
+                  </div>
+                  <div className="absolute top-4 right-4 px-3 py-1 bg-primary/20 rounded-full text-xs text-primary">
+                    LIVE
+                  </div>
+                  <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/50 rounded-lg text-sm">
+                    점수: 85점
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold mb-1">운동 모드</h3>
+                  <p className="text-sm text-muted-foreground">카메라로 자세를 인식하고 실시간 피드백을 받아요</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-3xl overflow-hidden">
+              <CardContent className="p-0">
+                <div className="aspect-video bg-gradient-to-br from-indigo-900 to-purple-900 flex items-center justify-center relative p-6">
+                  <div className="text-center">
+                    <div className="text-4xl mb-3">🐉</div>
+                    <p className="text-sm text-white/90 leading-relaxed">
+                      &ldquo;용사여, 드래곤이 마을을 위협하고 있다!<br />
+                      스쿼트 10회로 방어막을 만들어라!&rdquo;
+                    </p>
+                  </div>
+                  <div className="absolute top-4 left-4 px-3 py-1 bg-amber-500/20 rounded-full text-xs text-amber-400">
+                    Chapter 3
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold mb-1">스토리 모드</h3>
+                  <p className="text-sm text-muted-foreground">AI가 생성한 스토리 속에서 영웅이 되어보세요</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ 섹션 */}
+      <section className="relative z-10 px-6 pb-20">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">자주 묻는 질문</h2>
+          <div className="space-y-4">
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-2xl overflow-hidden">
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-2">어떤 장비가 필요한가요?</h3>
+                <p className="text-sm text-muted-foreground">
+                  웹캠이 있는 컴퓨터나 카메라가 있는 스마트폰만 있으면 됩니다. 별도의 장비나 앱 설치가 필요 없습니다.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-2xl overflow-hidden">
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-2">어떤 운동을 할 수 있나요?</h3>
+                <p className="text-sm text-muted-foreground">
+                  팔 들어올리기, 스쿼트 등 재활에 도움이 되는 다양한 운동을 스토리와 함께 진행합니다. AI가 실시간으로 자세를 분석해 피드백을 제공합니다.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-2xl overflow-hidden">
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-2">무료인가요?</h3>
+                <p className="text-sm text-muted-foreground">
+                  네, HearO는 완전 무료입니다. 회원가입 후 모든 기능을 제한 없이 사용할 수 있습니다.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* 팀 소개 섹션 */}
+      <section className="relative z-10 px-6 pb-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">HearO 팀</h2>
+          <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
+            재활이 지루하지 않도록, 운동이 모험이 되도록.<br />
+            HearO는 더 나은 재활 경험을 만들기 위해 노력합니다.
+          </p>
+          <div className="flex justify-center gap-4">
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-2xl overflow-hidden flex-1 max-w-xs">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent mx-auto mb-4 flex items-center justify-center text-2xl">
+                  🎮
+                </div>
+                <h3 className="font-semibold mb-1">게이미피케이션</h3>
+                <p className="text-xs text-muted-foreground">운동을 게임처럼 재미있게</p>
+              </CardContent>
+            </Card>
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-2xl overflow-hidden flex-1 max-w-xs">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-secondary to-pink-500 mx-auto mb-4 flex items-center justify-center text-2xl">
+                  🤖
+                </div>
+                <h3 className="font-semibold mb-1">AI 기술</h3>
+                <p className="text-xs text-muted-foreground">정확한 자세 분석과 스토리 생성</p>
+              </CardContent>
+            </Card>
+            <Card className="backdrop-blur-xl bg-card/30 border-border/40 rounded-2xl overflow-hidden flex-1 max-w-xs">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 mx-auto mb-4 flex items-center justify-center text-2xl">
+                  ❤️
+                </div>
+                <h3 className="font-semibold mb-1">사용자 중심</h3>
+                <p className="text-xs text-muted-foreground">누구나 쉽게 사용할 수 있도록</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* 하단 CTA 섹션 */}
+      <section className="relative z-10 px-6 pb-20">
+        <Card className="max-w-3xl mx-auto backdrop-blur-xl bg-gradient-to-r from-primary/20 via-accent/20 to-secondary/20 border-primary/30 rounded-3xl overflow-hidden">
           <CardContent className="p-8 md:p-12 text-center">
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              오늘의 움직임이 내일의 영웅을 만듭니다
+              지금 바로 영웅이 되어보세요
             </h2>
             <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-              지금 바로 시작하세요. 카메라만 있으면 어디서든 재활 운동을 할 수 있습니다.
+              카메라만 있으면 어디서든 시작할 수 있습니다.<br />
+              오늘의 운동이 내일의 영웅을 만듭니다.
             </p>
             <Link href="/adventure">
               <Button
                 size="lg"
-                className="h-12 px-6 bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground font-semibold shadow-[0_0_24px_oklch(0.7_0.25_260_/_0.5)] hover:scale-105 transition-all"
+                className="h-14 px-8 text-lg bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground font-semibold shadow-[0_0_30px_oklch(0.7_0.25_260_/_0.5)] hover:scale-105 transition-all"
               >
                 모험 시작하기
-                <ChevronRight className="w-5 h-5 ml-1" />
+                <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
           </CardContent>
@@ -150,7 +305,7 @@ export default function Home() {
 
       {/* 푸터 */}
       <footer className="relative z-10 border-t border-border/20 py-8 px-6 text-center text-sm text-muted-foreground">
-        <p>© 2024 HearO. 당신의 재활을 응원합니다.</p>
+        <p>© 2025 HearO. 당신의 재활을 응원합니다.</p>
       </footer>
     </main>
   )

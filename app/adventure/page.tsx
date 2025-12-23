@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -71,10 +71,36 @@ export default function AdventurePage() {
   const router = useRouter()
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
   const [selectedEventCount, setSelectedEventCount] = useState(5)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // 로그인 상태 확인 (localStorage에서 사용자 정보 확인)
+    const user = localStorage.getItem("hearo_user")
+    if (!user) {
+      // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+      router.push("/login?redirect=/adventure")
+      return
+    }
+    setIsLoggedIn(true)
+    setIsLoading(false)
+  }, [router])
 
   const handleStartAdventure = () => {
     if (!selectedTheme) return
     router.push(`/play?theme=${selectedTheme}&events=${selectedEventCount}`)
+  }
+
+  // 로딩 중이거나 로그인 안된 경우 (리다이렉트 중)
+  if (isLoading || !isLoggedIn) {
+    return (
+      <main className="min-h-screen epic-gradient flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">로딩 중...</p>
+        </div>
+      </main>
+    )
   }
 
   return (

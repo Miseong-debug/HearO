@@ -1,24 +1,116 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Headphones, Sparkles, Shield, Swords } from "lucide-react"
+import { Headphones, Sparkles, Shield, Swords, ChevronLeft, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase"
 
 export function LoginForm() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get("redirect") || "/"
+  const supabase = createClient()
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Login attempt:", { email, password })
+    setError(null)
+    setLoading(true)
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (signInError) {
+        if (signInError.message.includes("Invalid login credentials")) {
+          setError("이메일 또는 비밀번호가 올바르지 않습니다.")
+        } else if (signInError.message.includes("Email not confirmed")) {
+          setError("이메일 인증이 필요합니다. 이메일을 확인해주세요.")
+        } else {
+          setError(signInError.message)
+        }
+        setLoading(false)
+        return
+      }
+
+      if (data.user) {
+        router.push(redirect)
+        router.refresh()
+      }
+    } catch (err) {
+      setError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGuestLogin = async () => {
+    setError(null)
+    setLoading(true)
+
+    try {
+      // 게스트 계정으로 로그인 (익명 인증)
+      const { data, error: signInError } = await supabase.auth.signInAnonymously()
+
+      if (signInError) {
+        // 익명 인증이 비활성화된 경우 localStorage 폴백
+        const guestUser = {
+          email: "guest@hearo.app",
+          nickname: "용감한 모험가",
+          isGuest: true,
+          loginAt: new Date().toISOString()
+        }
+        localStorage.setItem("hearo_user", JSON.stringify(guestUser))
+        router.push(redirect)
+        return
+      }
+
+      if (data.user) {
+        // 게스트 사용자 메타데이터 업데이트
+        await supabase.auth.updateUser({
+          data: { nickname: "용감한 모험가", isGuest: true }
+        })
+        router.push(redirect)
+        router.refresh()
+      }
+    } catch (err) {
+      // 에러 시 localStorage 폴백
+      const guestUser = {
+        email: "guest@hearo.app",
+        nickname: "용감한 모험가",
+        isGuest: true,
+        loginAt: new Date().toISOString()
+      }
+      localStorage.setItem("hearo_user", JSON.stringify(guestUser))
+      router.push(redirect)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-1000">
+
+      {/* ===== 홈으로 버튼 ===== */}
+      <div className="flex justify-start">
+        <Link href="/">
+          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="w-4 h-4" />
+            홈으로
+          </Button>
+        </Link>
+      </div>
 
       {/* ===== LOGO ===== */}
       <div className="text-center space-y-4">
@@ -33,7 +125,7 @@ export function LoginForm() {
             />
 
             {/* MAIN ICON */}
-            <div className="relative p-6 rounded-3xl 
+            <div className="relative p-6 rounded-3xl
               bg-gradient-to-br from-primary via-secondary to-accent
               shadow-[0_0_25px_oklch(0.65_0.25_285_/_0.7)]
               glow-effect shine-effect">
@@ -60,8 +152,8 @@ export function LoginForm() {
       {/* ===== LOGIN CARD ===== */}
       <Card className="
         relative overflow-hidden
-        backdrop-blur-2xl bg-card/40 
-        border border-border/30 
+        backdrop-blur-2xl bg-card/40
+        border border-border/30
         rounded-3xl
         shadow-[0_0_40px_oklch(0.65_0.25_285_/_0.2)]
         glow-effect shine-effect">
@@ -78,11 +170,19 @@ export function LoginForm() {
             <Shield className="w-6 h-6 text-primary" />
             영웅의 문
           </CardTitle>
-          <CardDescription className="text-center">당신의 모험을 위해 로그인하세요</CardDescription>
+          <CardDescription className="text-center">계정으로 로그인하여 모험을 계속하세요</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4 relative z-10">
+            {/* 에러 메시지 */}
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {error}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">이메일</Label>
               <Input
@@ -91,7 +191,8 @@ export function LoginForm() {
                 placeholder="hero@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-input/40 border border-border/40 backdrop-blur-sm focus:ring-primary/60 focus:border-primary transition-all"
+                disabled={loading}
+                className="bg-input/40 border border-border/40 backdrop-blur-sm focus:ring-primary/60 focus:border-primary transition-all disabled:opacity-50"
                 required
               />
             </div>
@@ -104,7 +205,8 @@ export function LoginForm() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-input/40 border border-border/40 backdrop-blur-sm focus:ring-primary/60 focus:border-primary transition-all"
+                disabled={loading}
+                className="bg-input/40 border border-border/40 backdrop-blur-sm focus:ring-primary/60 focus:border-primary transition-all disabled:opacity-50"
                 required
               />
             </div>
@@ -113,23 +215,35 @@ export function LoginForm() {
           <CardFooter className="flex flex-col gap-4 relative z-10">
             <Button
               type="submit"
+              disabled={loading}
               className="
               w-full h-12 text-base font-semibold
-              bg-gradient-to-r from-primary via-accent to-secondary 
+              bg-gradient-to-r from-primary via-accent to-secondary
               text-primary-foreground
               shadow-[0_0_25px_oklch(0.7_0.25_260_/_0.6)]
-              hover:scale-[1.03] hover:opacity-95 
+              hover:scale-[1.03] hover:opacity-95
               transition-all duration-300
-              shine-effect"
+              shine-effect disabled:opacity-50 disabled:hover:scale-100"
             >
-              <Swords className="w-5 h-5 mr-2" />
-              모험 시작하기
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  접속 중...
+                </>
+              ) : (
+                <>
+                  <Swords className="w-5 h-5 mr-2" />
+                  모험 시작하기
+                </>
+              )}
             </Button>
 
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-muted/40 border-border/40 backdrop-blur-sm hover:bg-muted/60 hover:border-primary/50 transition-all duration-300"
+              disabled={loading}
+              className="w-full bg-muted/40 border-border/40 backdrop-blur-sm hover:bg-muted/60 hover:border-primary/50 transition-all duration-300 disabled:opacity-50"
+              onClick={handleGuestLogin}
             >
               게스트로 시작하기
             </Button>
@@ -153,9 +267,9 @@ export function LoginForm() {
               key={theme}
               style={{ animationDelay: `${index * 0.1}s` }}
               className="
-              px-3 py-1.5 rounded-full 
-              bg-muted/30 border border-border/30 
-              backdrop-blur-sm text-xs text-muted-foreground 
+              px-3 py-1.5 rounded-full
+              bg-muted/30 border border-border/30
+              backdrop-blur-sm text-xs text-muted-foreground
               hover:bg-primary/20 hover:text-primary hover:border-primary/50
               cursor-pointer transition-all duration-300"
             >
