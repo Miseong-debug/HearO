@@ -1,4 +1,15 @@
+import { Suspense } from "react"
 import { LoginForm } from "@/components/login-form"
+import { Loader2 } from "lucide-react"
+
+function LoginLoading() {
+  return (
+    <div className="flex flex-col items-center gap-3 text-muted-foreground">
+      <Loader2 className="w-8 h-8 animate-spin" />
+      <p>로딩 중...</p>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   return (
@@ -43,7 +54,9 @@ export default function LoginPage() {
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-md">
-        <LoginForm />
+        <Suspense fallback={<LoginLoading />}>
+          <LoginForm />
+        </Suspense>
       </div>
     </main>
   )
