@@ -20,7 +20,11 @@
       "Bash(dir \"C:\\\\HearO\\\\public\" /B)",
       "Bash(REPLICATE_API_TOKEN=r8_TYbhp842t6ojKSqTvcxmuUo2ujvwVZ914gvI9 npx tsx:*)",
       "Bash(dir:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 다중 운동 지원 및 스토리 연동 개선\n\n- 5가지 재활 운동 추가 \\(팔올리기, 스쿼트, 팔굽혀펴기, 런지, 힐슬라이드\\)\n- 운동별 캘리브레이션 데이터 localStorage 저장\n- 운동 종류에 따른 스토리 프롬프트 동적 생성\n- 스토리 중복 로드 버그 수정 \\(React.StrictMode 대응\\)\n- 무한 루프 버그 수정 \\(usePose ref 패턴 적용\\)\n- 모험 설정 화면에 운동 선택 UI 추가\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
