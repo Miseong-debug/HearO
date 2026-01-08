@@ -352,7 +352,7 @@ export default function AdventurePage() {
                     <Dumbbell className="w-5 h-5" />
                     운동 부위
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {EXERCISE_LIST.map((exercise) => {
                       const isSelected = selectedExercise.id === exercise.id
                       const savedCalibration = getSavedCalibration(exercise.id)
@@ -361,37 +361,37 @@ export default function AdventurePage() {
                       return (
                         <button
                           key={exercise.id}
-                          className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                          className={`relative p-5 rounded-2xl border-2 transition-all text-left ${
                             isSelected
-                              ? `border-primary bg-gradient-to-br ${exercise.gradient} text-white shadow-lg`
-                              : "border-border/40 bg-card/30 hover:border-border/60"
+                              ? `border-primary bg-gradient-to-br ${exercise.gradient} text-white shadow-lg scale-[1.02]`
+                              : "border-border/40 bg-card/30 hover:border-border/60 hover:bg-card/50"
                           }`}
                           onClick={() => setSelectedExercise(exercise)}
                         >
                           {/* 선택 표시 */}
                           {isSelected && (
-                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
-                              <Check className="w-3 h-3 text-primary" />
+                            <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-white flex items-center justify-center">
+                              <Check className="w-4 h-4 text-primary" />
                             </div>
                           )}
 
                           {/* 아이콘 */}
-                          <div className="text-2xl mb-2">{exercise.icon}</div>
+                          <div className="text-4xl mb-3">{exercise.icon}</div>
 
                           {/* 이름 */}
-                          <div className={`font-semibold text-sm ${isSelected ? "text-white" : ""}`}>
+                          <div className={`font-bold text-lg ${isSelected ? "text-white" : ""}`}>
                             {exercise.name}
                           </div>
 
                           {/* 영문명 */}
-                          <div className={`text-xs ${isSelected ? "text-white/70" : "text-muted-foreground"}`}>
+                          <div className={`text-sm mt-1 ${isSelected ? "text-white/80" : "text-muted-foreground"}`}>
                             {exercise.nameEn}
                           </div>
 
                           {/* 캘리브레이션 상태 */}
                           {hasCalibration && (
-                            <div className={`mt-2 text-[10px] ${isSelected ? "text-white/80" : "text-green-500"}`}>
-                              ✓ 보정됨
+                            <div className={`mt-3 text-xs font-medium ${isSelected ? "text-white/90" : "text-green-500"}`}>
+                              ✓ 캘리브레이션 완료
                             </div>
                           )}
                         </button>
@@ -400,26 +400,26 @@ export default function AdventurePage() {
                   </div>
 
                   {/* 선택된 운동 설명 */}
-                  <div className="mt-4 p-4 bg-card/30 border border-border/40 rounded-xl">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${selectedExercise.gradient} flex items-center justify-center text-2xl flex-shrink-0`}>
+                  <div className="mt-6 p-5 bg-card/40 border border-border/40 rounded-2xl">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${selectedExercise.gradient} flex items-center justify-center text-3xl flex-shrink-0 shadow-lg`}>
                         {selectedExercise.icon}
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold">{selectedExercise.name}</div>
-                        <div className="text-sm text-muted-foreground">{selectedExercise.description}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{selectedExercise.instruction}</div>
+                        <div className="font-bold text-xl mb-1">{selectedExercise.name}</div>
+                        <div className="text-base text-muted-foreground">{selectedExercise.description}</div>
+                        <div className="text-sm text-muted-foreground/80 mt-2">{selectedExercise.instruction}</div>
                       </div>
                     </div>
 
                     {/* 자세 안내 (setup이 있는 운동) */}
                     {selectedExercise.setup && (
-                      <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                        <div className="flex items-start gap-3">
+                          <Info className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                           <div>
-                            <div className="text-xs font-medium text-amber-400 mb-1">시작 전 자세 안내</div>
-                            <div className="text-xs text-amber-200/80 whitespace-pre-line">
+                            <div className="text-sm font-semibold text-amber-400 mb-1">시작 전 자세 안내</div>
+                            <div className="text-sm text-amber-200/90 whitespace-pre-line leading-relaxed">
                               {selectedExercise.setup}
                             </div>
                           </div>
