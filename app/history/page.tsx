@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CalendarClock, Play, Star, Sword, Rocket, Skull, Heart, ChevronLeft } from "lucide-react"
+import { CalendarClock, Play, Star, Sword, Rocket, Skull, Heart } from "lucide-react"
+import { Header } from "@/components/header"
 
 type Theme = "dungeon" | "space" | "zombie" | "healing"
 
@@ -68,20 +69,11 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="min-h-screen epic-gradient relative overflow-hidden p-4 md:p-8">
-      <div className="relative z-10 max-w-4xl mx-auto space-y-6 md:space-y-8">
-        {/* 헤더 */}
-        <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ChevronLeft className="w-4 h-4" />
-                홈으로
-              </Button>
-            </Link>
-          </div>
-        </header>
+    <main className="min-h-screen epic-gradient relative overflow-hidden">
+      {/* 헤더 */}
+      <Header />
 
+      <div className="relative z-10 max-w-4xl mx-auto space-y-6 md:space-y-8 px-4 md:px-8 pb-8">
         <div className="space-y-2">
           <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent drop-shadow-[0_0_18px_oklch(0.7_0.25_260_/_0.6)]">
             모험 기록

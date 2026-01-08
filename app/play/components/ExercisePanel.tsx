@@ -1,11 +1,13 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useState } from "react"
 import dynamic from "next/dynamic"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StoryEvent } from "../hooks/useGameState"
 import { Camera as CameraIcon, CheckCircle, Swords } from "lucide-react"
+import { AngleInfo } from "@/app/exercise/hooks/useAngle"
+import { ExerciseId, getExerciseConfig, DEFAULT_EXERCISE } from "@/lib/exercises"
 
 // 카메라 컴포넌트 동적 로드
 const Camera = dynamic(() => import("@/app/exercise/camera"), {
@@ -20,9 +22,10 @@ const Camera = dynamic(() => import("@/app/exercise/camera"), {
 interface ExercisePanelProps {
   event: StoryEvent
   onComplete: () => void
-  onUpdate: (reps: number, score: number) => void
+  onUpdate: (reps: number, angles: AngleInfo | null) => void
   currentReps: number
-  currentScore: number
+  currentAngles: AngleInfo | null
+  exerciseId?: ExerciseId
 }
 
 export default function ExercisePanel({
@@ -30,19 +33,15 @@ export default function ExercisePanel({
   onComplete,
   onUpdate,
   currentReps,
-  currentScore
+  currentAngles,
+  exerciseId = DEFAULT_EXERCISE
 }: ExercisePanelProps) {
+  const exerciseConfig = getExerciseConfig(exerciseId)
   const [isCameraReady, setIsCameraReady] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [isTargetReached, setIsTargetReached] = useState(false)
-  const latestScoreRef = useRef(currentScore)
 
   const targetReps = event.exerciseTarget || 10
-
-  // 점수 업데이트 추적
-  useEffect(() => {
-    latestScoreRef.current = currentScore
-  }, [currentScore])
 
   // 카메라 시작
   const startCamera = () => {
@@ -56,12 +55,12 @@ export default function ExercisePanel({
 
   // 반복 수 콜백
   const handleRepCount = (count: number) => {
-    onUpdate(count, latestScoreRef.current)
+    onUpdate(count, currentAngles)
   }
 
-  // 점수 콜백
-  const handleScoreUpdate = (score: number) => {
-    onUpdate(currentReps, score)
+  // 각도 콜백
+  const handleAngleUpdate = (angles: AngleInfo) => {
+    onUpdate(currentReps, angles)
   }
 
   // 목표 달성 콜백
@@ -77,10 +76,21 @@ export default function ExercisePanel({
   const enemyHp = Math.max(100 - progress, 0)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative z-50">
       {/* 상단: 상태 표시 */}
       <Card className="backdrop-blur-xl bg-card/40 border-border/40 rounded-2xl">
         <CardContent className="p-4">
+          {/* 운동 정보 */}
+          <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border/30">
+            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${exerciseConfig.gradient} flex items-center justify-center text-xl`}>
+              {exerciseConfig.icon}
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-sm">{exerciseConfig.name}</div>
+              <div className="text-xs text-muted-foreground">{exerciseConfig.instruction}</div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Swords className="w-5 h-5 text-red-400" />
@@ -106,13 +116,27 @@ export default function ExercisePanel({
             </div>
           </div>
 
-          {/* 자세 점수 */}
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">자세 점수</span>
-            <span className={`font-medium ${currentScore >= 70 ? "text-green-400" : currentScore >= 50 ? "text-amber-400" : "text-red-400"}`}>
-              {currentScore}점
-            </span>
-          </div>
+          {/* 관절 각도 표시 */}
+          {currentAngles && (
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">왼팔꿈치</span>
+                <span className="font-medium text-blue-400">{currentAngles.leftElbow}°</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">오른팔꿈치</span>
+                <span className="font-medium text-blue-400">{currentAngles.rightElbow}°</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">왼어깨</span>
+                <span className="font-medium text-purple-400">{currentAngles.leftShoulder}°</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">오른어깨</span>
+                <span className="font-medium text-purple-400">{currentAngles.rightShoulder}°</span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -127,13 +151,14 @@ export default function ExercisePanel({
               </Button>
             </div>
           ) : (
-            <div className="relative">
+            <div className="relative aspect-video rounded-xl overflow-hidden">
               <Camera
                 onRepCount={handleRepCount}
-                onScoreUpdate={handleScoreUpdate}
+                onAngleUpdate={handleAngleUpdate}
                 onTargetReached={handleTargetReached}
                 isRunning={isRunning}
                 targetReps={targetReps}
+                exerciseId={exerciseId}
               />
 
               {/* 운동 시작 오버레이 */}

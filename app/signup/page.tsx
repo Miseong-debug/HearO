@@ -46,6 +46,23 @@ export default function SignupPage() {
 
     setLoading(true)
 
+    if (!supabase) {
+      // Supabase not configured - use localStorage fallback
+      const localUser = {
+        email,
+        nickname,
+        isGuest: false,
+        loginAt: new Date().toISOString()
+      }
+      localStorage.setItem("hearo_user", JSON.stringify(localUser))
+      setSuccess(true)
+      setTimeout(() => {
+        router.push(redirect)
+      }, 1500)
+      setLoading(false)
+      return
+    }
+
     try {
       // Supabase 회원가입
       const { data, error: signUpError } = await supabase.auth.signUp({

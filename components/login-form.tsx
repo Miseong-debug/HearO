@@ -26,6 +26,20 @@ export function LoginForm() {
     setError(null)
     setLoading(true)
 
+    if (!supabase) {
+      // Supabase not configured - use localStorage fallback
+      const localUser = {
+        email,
+        nickname: email.split("@")[0],
+        isGuest: false,
+        loginAt: new Date().toISOString()
+      }
+      localStorage.setItem("hearo_user", JSON.stringify(localUser))
+      router.push(redirect)
+      setLoading(false)
+      return
+    }
+
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -59,18 +73,27 @@ export function LoginForm() {
     setError(null)
     setLoading(true)
 
+    // localStorage 폴백 (Supabase 없이도 동작)
+    const guestUser = {
+      email: "guest@hearo.app",
+      nickname: "용감한 모험가",
+      isGuest: true,
+      loginAt: new Date().toISOString()
+    }
+
+    if (!supabase) {
+      localStorage.setItem("hearo_user", JSON.stringify(guestUser))
+      router.push(redirect)
+      setLoading(false)
+      return
+    }
+
     try {
       // 게스트 계정으로 로그인 (익명 인증)
       const { data, error: signInError } = await supabase.auth.signInAnonymously()
 
       if (signInError) {
         // 익명 인증이 비활성화된 경우 localStorage 폴백
-        const guestUser = {
-          email: "guest@hearo.app",
-          nickname: "용감한 모험가",
-          isGuest: true,
-          loginAt: new Date().toISOString()
-        }
         localStorage.setItem("hearo_user", JSON.stringify(guestUser))
         router.push(redirect)
         return
@@ -86,12 +109,6 @@ export function LoginForm() {
       }
     } catch (err) {
       // 에러 시 localStorage 폴백
-      const guestUser = {
-        email: "guest@hearo.app",
-        nickname: "용감한 모험가",
-        isGuest: true,
-        loginAt: new Date().toISOString()
-      }
       localStorage.setItem("hearo_user", JSON.stringify(guestUser))
       router.push(redirect)
     } finally {

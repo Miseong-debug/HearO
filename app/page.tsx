@@ -51,7 +51,7 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <Link href="/adventure">
+          <Link href="/profiles">
             <Button
               size="lg"
               className="h-14 px-8 text-lg bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground font-semibold shadow-[0_0_30px_oklch(0.7_0.25_260_/_0.5)] hover:scale-105 transition-all"
@@ -290,7 +290,7 @@ export default function Home() {
               카메라만 있으면 어디서든 시작할 수 있습니다.<br />
               오늘의 운동이 내일의 영웅을 만듭니다.
             </p>
-            <Link href="/adventure">
+            <Link href="/profiles">
               <Button
                 size="lg"
                 className="h-14 px-8 text-lg bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground font-semibold shadow-[0_0_30px_oklch(0.7_0.25_260_/_0.5)] hover:scale-105 transition-all"

@@ -1,120 +1,103 @@
 import { NextResponse } from "next/server"
 
-// 이미지 생성 제공자 타입
-type ImageProvider = "huggingface" | "pollinations"
+// Pollinations.ai 무료 폴백
+function generateWithPollinations(prompt: string): string {
+  const cleanPrompt = prompt
+    .replace(/[^\w\s,.-]/g, '')
+    .slice(0, 200)
+  const encodedPrompt = encodeURIComponent(cleanPrompt)
+  return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1792&height=1024&nologo=true`
+}
+
+// Replicate Flux로 이미지 생성
+async function generateWithReplicate(prompt: string, apiToken: string, seed?: number): Promise<string> {
+  const input: Record<string, unknown> = {
+    prompt: prompt,
+    num_outputs: 1,
+    aspect_ratio: "16:9",
+    output_format: "webp",
+    output_quality: 80,
+  }
+
+  // seed가 있으면 추가 (같은 seed = 같은 이미지)
+  if (seed !== undefined) {
+    input.seed = seed
+  }
+
+  const response = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ input }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error("Replicate API 오류:", error)
+    throw new Error("Replicate API 실패")
+  }
+
+  let prediction = await response.json()
+
+  // 최대 30초 대기
+  let attempts = 0
+  while (prediction.status !== "succeeded" && prediction.status !== "failed" && attempts < 30) {
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    const pollResponse = await fetch(prediction.urls.get, {
+      headers: {
+        "Authorization": `Bearer ${apiToken}`,
+      },
+    })
+    prediction = await pollResponse.json()
+    attempts++
+  }
+
+  if (prediction.status === "failed" || !prediction.output?.[0]) {
+    throw new Error("이미지 생성 실패")
+  }
+
+  return prediction.output[0]
+}
 
 export async function POST(req: Request) {
   try {
-    const { prompt, provider = "huggingface" } = await req.json()
+    const { prompt, seed } = await req.json()
 
     if (!prompt || prompt.trim().length === 0) {
       return NextResponse.json({ error: "프롬프트가 필요합니다" }, { status: 400 })
     }
 
-    // 안전한 프롬프트로 변환 (부적절한 내용 필터링)
-    const safePrompt = sanitizePrompt(prompt)
+    const apiToken = process.env.REPLICATE_API_TOKEN
+    let imageUrl: string
+    let provider: string
 
-    let imageResult: { url: string; provider: string } | null = null
-
-    // 1차 시도: Hugging Face FLUX
-    if (provider === "huggingface" || provider === "pollinations") {
-      imageResult = await tryHuggingFace(safePrompt)
-    }
-
-    // 2차 시도: Pollinations (폴백)
-    if (!imageResult) {
-      imageResult = await tryPollinations(safePrompt)
-    }
-
-    if (!imageResult) {
-      throw new Error("모든 이미지 생성 서비스 실패")
+    // Replicate 시도, 실패 시 Pollinations 폴백
+    if (apiToken) {
+      try {
+        imageUrl = await generateWithReplicate(prompt, apiToken, seed)
+        provider = "replicate-flux"
+      } catch (error) {
+        console.log("Replicate 실패, Pollinations로 폴백:", error)
+        imageUrl = generateWithPollinations(prompt)
+        provider = "pollinations"
+      }
+    } else {
+      imageUrl = generateWithPollinations(prompt)
+      provider = "pollinations"
     }
 
     return NextResponse.json({
-      image: imageResult.url,
-      provider: imageResult.provider,
+      image: imageUrl,
+      provider,
     })
   } catch (error) {
     console.error("이미지 생성 중 오류:", error)
-    return NextResponse.json(
-      { error: "이미지 생성 중 오류가 발생했습니다." },
-      { status: 500 }
-    )
-  }
-}
-
-// 프롬프트 안전화
-function sanitizePrompt(prompt: string): string {
-  // 기본 필터링 - 영어로 변환 및 안전한 내용만 유지
-  const sanitized = prompt
-    .replace(/[^\w\s,.\-가-힣]/g, "")
-    .substring(0, 500)
-
-  return sanitized
-}
-
-// Hugging Face FLUX.1-schnell 사용
-async function tryHuggingFace(prompt: string): Promise<{ url: string; provider: string } | null> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY
-
-  if (!apiKey) {
-    console.log("HUGGINGFACE_API_KEY 없음, 폴백 사용")
-    return null
-  }
-
-  try {
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            num_inference_steps: 4,
-            guidance_scale: 0,
-          },
-        }),
-      }
-    )
-
-    if (!response.ok) {
-      console.error("Hugging Face API 오류:", response.status, await response.text())
-      return null
-    }
-
-    // 이미지 blob을 base64로 변환
-    const blob = await response.blob()
-    const buffer = await blob.arrayBuffer()
-    const base64 = Buffer.from(buffer).toString("base64")
-    const dataUrl = `data:image/jpeg;base64,${base64}`
-
-    return { url: dataUrl, provider: "huggingface" }
-  } catch (error) {
-    console.error("Hugging Face 오류:", error)
-    return null
-  }
-}
-
-// Pollinations.ai 사용 (폴백)
-async function tryPollinations(prompt: string): Promise<{ url: string; provider: string } | null> {
-  try {
-    const encodedPrompt = encodeURIComponent(prompt)
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Date.now()}`
-
-    // URL이 유효한지 확인 (HEAD 요청)
-    const checkResponse = await fetch(imageUrl, { method: "HEAD" })
-
-    if (checkResponse.ok) {
-      return { url: imageUrl, provider: "pollinations" }
-    }
-
-    return null
-  } catch (error) {
-    console.error("Pollinations 오류:", error)
-    return null
+    return NextResponse.json({
+      image: generateWithPollinations("fantasy adventure scene"),
+      provider: "pollinations-fallback",
+    })
   }
 }

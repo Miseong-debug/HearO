@@ -1,10 +1,11 @@
 import "./globals.css"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Geist, Geist_Mono, Rajdhani } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 
 const geist = Geist({ subsets: ["latin"] })
 const geistMono = Geist_Mono({ subsets: ["latin"] })
+const rajdhani = Rajdhani({ subsets: ["latin"], variable: "--font-rajdhani", weight: ["400", "600", "700"] })
 
 export const metadata: Metadata = {
   title: "HearO - 당신의 영웅 서사가 시작됩니다",
@@ -27,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ko" className="dark">
+    <html lang="ko" className={`dark ${rajdhani.variable}`}>
       <body
         className={`${geist.className} min-h-screen relative overflow-x-hidden antialiased`}
       >

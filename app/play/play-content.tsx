@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -15,8 +16,13 @@ import {
   Trophy,
   Home,
   RotateCcw,
-  ChevronRight
+  ChevronRight,
+  X,
+  AlertTriangle,
+  Volume2,
+  VolumeX
 } from "lucide-react"
+import { ExerciseId, getExerciseConfig, DEFAULT_EXERCISE } from "@/lib/exercises"
 
 const themeNames: Record<Theme, string> = {
   dungeon: "던전/판타지",
@@ -31,6 +37,10 @@ export default function PlayContent() {
 
   const theme = (searchParams.get("theme") || "dungeon") as Theme
   const eventCount = Number(searchParams.get("events") || 5)
+  const nickname = searchParams.get("nickname") || "영웅"
+  const profileId = searchParams.get("profileId") || undefined
+  const exerciseId = (searchParams.get("exercise") || DEFAULT_EXERCISE) as ExerciseId
+  const exerciseConfig = getExerciseConfig(exerciseId)
 
   const {
     state,
@@ -40,7 +50,75 @@ export default function PlayContent() {
     completeExercise,
     nextEvent,
     saveToHistory
-  } = useGameState(theme, eventCount)
+  } = useGameState(theme, eventCount, nickname, profileId, exerciseId)
+
+  const [showExitDialog, setShowExitDialog] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // 배경음악 초기화 및 재생
+  useEffect(() => {
+    const audio = new Audio("/audio/bgm/bgm.mp3")
+    audio.loop = true
+    audio.volume = 0.3
+    audioRef.current = audio
+
+    // 사용자 인터랙션 후 자동 재생 시도
+    const playAudio = () => {
+      audio.play().catch(() => {
+        // 자동 재생 실패 시 무시 (브라우저 정책)
+      })
+    }
+
+    // 페이지 로드 시 재생 시도
+    playAudio()
+
+    // 클릭 시 재생 시도 (브라우저 자동재생 정책 대응)
+    const handleInteraction = () => {
+      if (audio.paused) {
+        playAudio()
+      }
+      document.removeEventListener("click", handleInteraction)
+    }
+    document.addEventListener("click", handleInteraction)
+
+    return () => {
+      audio.pause()
+      audio.src = ""
+      document.removeEventListener("click", handleInteraction)
+    }
+  }, [])
+
+  // 음소거 토글
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !isMuted
+      setIsMuted(!isMuted)
+    }
+  }
+
+  // 게임 완료 시 음악 정지 및 히스토리 저장
+  const hasSavedRef = useRef(false)
+  useEffect(() => {
+    if (state.isCompleted) {
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
+      // 중복 저장 방지
+      if (!hasSavedRef.current) {
+        hasSavedRef.current = true
+        saveToHistory()
+      }
+    }
+  }, [state.isCompleted, saveToHistory])
+
+  const handleExit = () => {
+    // 나갈 때 음악 정지
+    if (audioRef.current) {
+      audioRef.current.pause()
+    }
+    router.push("/adventure")
+  }
 
   // 로딩 중
   if (state.isLoading) {
@@ -49,7 +127,7 @@ export default function PlayContent() {
         <div className="flex flex-col items-center gap-4 text-center">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
           <div>
-            <p className="text-lg font-medium">스토리를 생성하는 중...</p>
+            <p className="text-lg font-medium">{nickname}의 스토리를 생성하는 중...</p>
             <p className="text-sm text-muted-foreground mt-1">
               {themeNames[theme]} 모험을 준비하고 있습니다
             </p>
@@ -77,9 +155,6 @@ export default function PlayContent() {
 
   // 게임 완료
   if (state.isCompleted) {
-    // 히스토리에 저장
-    saveToHistory()
-
     return (
       <main className="min-h-screen epic-gradient relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -158,23 +233,76 @@ export default function PlayContent() {
         />
       </div>
 
+      {/* 나가기 확인 다이얼로그 */}
+      {showExitDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-sm backdrop-blur-xl bg-card/90 border-border/40 rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">모험을 중단하시겠습니까?</h3>
+                  <p className="text-sm text-muted-foreground">진행 상황이 저장되지 않습니다</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowExitDialog(false)}
+                >
+                  계속하기
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={handleExit}
+                >
+                  나가기
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* 헤더 */}
       <header className="relative z-10 flex items-center justify-between p-4 md:p-6">
-        <Link href="/adventure">
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ChevronLeft className="w-4 h-4" />
-            나가기
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          onClick={() => setShowExitDialog(true)}
+        >
+          <ChevronLeft className="w-4 h-4" />
+          나가기
+        </Button>
 
         <div className="text-center">
           <h1 className="font-semibold text-sm md:text-base">{state.chapter.title}</h1>
-          <p className="text-xs text-muted-foreground">{themeNames[theme]}</p>
+          <p className="text-xs text-muted-foreground">{nickname} - {themeNames[theme]}</p>
         </div>
 
-        <div className="flex items-center gap-1 text-amber-400">
-          <Star className="w-4 h-4 fill-current" />
-          <span className="font-bold">{state.totalExp}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 text-amber-400">
+            <Star className="w-4 h-4 fill-current" />
+            <span className="font-bold">{state.totalExp}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMute}
+            className="w-8 h-8 p-0"
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       </header>
 
@@ -194,26 +322,13 @@ export default function PlayContent() {
 
           {/* 운동 중이 아닐 때: 스토리 패널 */}
           {!state.isExercising && (
-            <>
-              <StoryPanel
-                event={currentEvent}
-                onStartExercise={startExercise}
-              />
-
-              {/* 스토리 이벤트일 경우 다음 버튼 */}
-              {currentEvent.type === "story" && (
-                <div className="mt-6 text-center">
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-primary via-accent to-secondary"
-                    onClick={nextEvent}
-                  >
-                    다음으로
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              )}
-            </>
+            <StoryPanel
+              event={currentEvent}
+              onStartExercise={startExercise}
+              onNextEvent={nextEvent}
+              imageUrl={state.currentImageUrl}
+              isImageLoading={state.isImageLoading}
+            />
           )}
 
           {/* 운동 중일 때: 운동 패널 */}
@@ -226,7 +341,8 @@ export default function PlayContent() {
               }}
               onUpdate={updateExercise}
               currentReps={state.exerciseReps}
-              currentScore={state.exerciseScore}
+              currentAngles={state.exerciseAngles}
+              exerciseId={exerciseId}
             />
           )}
         </div>

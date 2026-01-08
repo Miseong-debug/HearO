@@ -22,20 +22,38 @@ export async function createPoseLandmarker() {
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
   )
 
-  const landmarker = await (PoseLandmarker as any).createFromOptions(vision, {
+  const options = {
     baseOptions: {
       modelAssetPath:
-        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
-      delegate: "GPU",
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+      delegate: "GPU" as const,
     },
-    runningMode: "VIDEO",
+    runningMode: "VIDEO" as const,
     numPoses: 1,
     minPoseDetectionConfidence: POSE_CONFIG.minPoseDetectionConfidence,
     minPosePresenceConfidence: POSE_CONFIG.minPosePresenceConfidence,
     minTrackingConfidence: POSE_CONFIG.minTrackingConfidence,
-  })
+  }
 
-  return landmarker
+  try {
+    // GPU로 먼저 시도
+    const landmarker = await PoseLandmarker.createFromOptions(vision, options)
+    console.log("MediaPipe: GPU delegate 사용")
+    return landmarker
+  } catch (gpuError) {
+    console.warn("GPU delegate 실패, CPU로 폴백:", gpuError)
+    // CPU로 폴백
+    const cpuOptions = {
+      ...options,
+      baseOptions: {
+        ...options.baseOptions,
+        delegate: "CPU" as const,
+      },
+    }
+    const landmarker = await PoseLandmarker.createFromOptions(vision, cpuOptions)
+    console.log("MediaPipe: CPU delegate 사용")
+    return landmarker
+  }
 }
 
 // 조명 품질 체크 함수

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(cat:*)",
+      "Bash(npm ls:*)",
+      "Bash(taskkill:*)",
+      "Bash(rm:*)",
+      "Bash(node -e:*)",
+      "Bash(curl:*)",
+      "Bash(dir \"C:\\\\HearO\\\\public\\\\audio\\\\bgm\")",
+      "Bash(Rename-Item \"C:\\\\HearO\\\\public\\\\audio\\\\bgm\\\\battle-of-the-dragons-8037.mp3\" \"bgm.mp3\")",
+      "Bash(grep:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(pkill:*)",
+      "Bash(dir \"C:\\\\HearO\\\\public\" /B)",
+      "Bash(REPLICATE_API_TOKEN=r8_TYbhp842t6ojKSqTvcxmuUo2ujvwVZ914gvI9 npx tsx:*)",
+      "Bash(dir:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

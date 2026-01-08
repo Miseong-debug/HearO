@@ -1,35 +1,63 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity, Flame, PauseCircle, PlayCircle, Target, Volume2, VolumeX, Camera as CameraIcon, Trophy, Minus, Plus, Sparkles } from "lucide-react"
+import { Activity, Flame, PauseCircle, PlayCircle, Target, Volume2, VolumeX, Camera as CameraIcon, Trophy, Minus, Plus, Sparkles, RotateCcw, ChevronLeft, Dumbbell } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useVoiceGuide } from "./hooks/useVoiceGuide"
 import WorldviewSelector from "@/components/WorldviewSelector"
 import { WORLDVIEW_LIST, type Worldview } from "@/lib/story/worldviews"
+import { AngleInfo } from "./hooks/useAngle"
+import { getSavedCalibration, clearCalibrationStorage } from "./hooks/useCalibration"
+import { ExerciseId, ExerciseConfig, EXERCISE_LIST, getExerciseConfig, DEFAULT_EXERCISE } from "@/lib/exercises"
+import ExerciseSelector, { SetupGuideModal } from "@/components/ExerciseSelector"
 
 // Camera 컴포넌트를 클라이언트에서만 로드 (MediaPipe는 SSR 불가)
 const Camera = dynamic(() => import("./camera"), { ssr: false })
 
+type PageStep = "select-exercise" | "exercise"
+
 export default function ExercisePage() {
   const router = useRouter()
 
+  // 페이지 단계
+  const [step, setStep] = useState<PageStep>("select-exercise")
+
+  // 선택된 운동
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseConfig>(getExerciseConfig(DEFAULT_EXERCISE))
+  const [showSetupGuide, setShowSetupGuide] = useState(false)
+
+  // 운동 상태
   const [isRunning, setIsRunning] = useState(false)
   const [isCameraReady, setIsCameraReady] = useState(false)
   const [reps, setReps] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [quality, setQuality] = useState(0)
+  const [angles, setAngles] = useState<AngleInfo | null>(null)
   const [targetReps, setTargetReps] = useState(10)
   const [isTargetReached, setIsTargetReached] = useState(false)
   const [isVoiceGuideOn, setIsVoiceGuideOn] = useState(false)
   const [selectedWorldview, setSelectedWorldview] = useState<Worldview>(WORLDVIEW_LIST[0])
   const [userName, setUserName] = useState("용사")
   const [chapter, setChapter] = useState(1)
+  const [baselineAngle, setBaselineAngle] = useState<number | null>(null)
+  const [cameraKey, setCameraKey] = useState(0)
+  const [hasSavedCalibration, setHasSavedCalibration] = useState(false)
 
   const voiceGuide = useVoiceGuide()
-  const lastPostureWarningRef = useRef(0)
+
+  // 선택된 운동의 저장된 캘리브레이션 확인
+  useEffect(() => {
+    const saved = getSavedCalibration(selectedExercise.id)
+    if (saved) {
+      setBaselineAngle(saved.baselineAngle)
+      setHasSavedCalibration(true)
+    } else {
+      setBaselineAngle(null)
+      setHasSavedCalibration(false)
+    }
+  }, [selectedExercise.id])
 
   const adjustTarget = (delta: number) => {
     setTargetReps((prev) => Math.max(1, Math.min(50, prev + delta)))
@@ -45,14 +73,12 @@ export default function ExercisePage() {
     }
   }
 
-  // 타이머: 운동 중일 때 1초마다 duration 증가
+  // 타이머
   useEffect(() => {
     if (!isRunning) return
-
     const timer = setInterval(() => {
       setDuration((prev) => prev + 1)
     }, 1000)
-
     return () => clearInterval(timer)
   }, [isRunning])
 
@@ -70,30 +96,56 @@ export default function ExercisePage() {
     })
   }
 
+  // 운동 선택 후 시작
+  const handleSelectExercise = (exercise: ExerciseConfig) => {
+    setSelectedExercise(exercise)
+  }
+
+  const handleStartExercise = () => {
+    // setup 안내가 있는 운동이면 모달 표시
+    if (selectedExercise.setup) {
+      setShowSetupGuide(true)
+    } else {
+      setStep("exercise")
+    }
+  }
+
+  const handleSetupConfirm = () => {
+    setShowSetupGuide(false)
+    setStep("exercise")
+  }
+
+  const handleBackToSelect = () => {
+    setStep("select-exercise")
+    setIsCameraReady(false)
+    setIsRunning(false)
+    setReps(0)
+    setDuration(0)
+    setIsTargetReached(false)
+  }
+
   const startCamera = () => {
     setIsCameraReady(true)
   }
 
   const finishExercise = () => {
     if (isVoiceGuideOn) {
-      voiceGuide.announceFinish(reps, quality)
+      voiceGuide.announceFinish(reps, 0)
     }
-    // 음성이 끝난 후 이동하도록 약간 딜레이
     const params = new URLSearchParams({
       reps: String(reps),
-      score: String(quality),
       duration: String(duration),
       targetReps: String(targetReps),
       worldview: selectedWorldview.id,
       userName: userName,
       chapter: String(chapter),
+      exercise: selectedExercise.id,
     })
     setTimeout(() => {
       router.push(`/result?${params.toString()}`)
     }, isVoiceGuideOn ? 2000 : 0)
   }
 
-  // 반복 카운트 음성 안내
   const handleRepCount = (count: number) => {
     setReps(count)
     if (isVoiceGuideOn) {
@@ -101,7 +153,6 @@ export default function ExercisePage() {
     }
   }
 
-  // 목표 달성 음성 안내
   const handleTargetReached = () => {
     setIsTargetReached(true)
     if (isVoiceGuideOn) {
@@ -109,26 +160,78 @@ export default function ExercisePage() {
     }
   }
 
-  // 자세 점수 업데이트 및 경고
-  const handleScoreUpdate = (score: number) => {
-    setQuality(score)
-
-    // 운동 중이고 음성 가이드가 켜져 있을 때만
-    if (!isRunning || !isVoiceGuideOn) return
-
-    const now = Date.now()
-    const warningInterval = 10000 // 10초 간격으로만 경고
-
-    // 점수가 50 이하이고 마지막 경고로부터 10초 이상 지났을 때
-    if (score > 0 && score < 50 && now - lastPostureWarningRef.current > warningInterval) {
-      lastPostureWarningRef.current = now
-      voiceGuide.announcePostureWarning(score)
-    }
+  const handleAngleUpdate = (newAngles: AngleInfo) => {
+    setAngles(newAngles)
   }
 
+  const handleCalibrationComplete = (angle: number) => {
+    setBaselineAngle(angle)
+    setHasSavedCalibration(true)
+    console.log(`[Exercise] ${selectedExercise.name} 캘리브레이션 완료, 기준 각도:`, angle)
+  }
+
+  const resetCalibration = () => {
+    clearCalibrationStorage(selectedExercise.id)
+    setBaselineAngle(null)
+    setHasSavedCalibration(false)
+    setReps(0)
+    setCameraKey(prev => prev + 1)
+  }
+
+  // 운동 선택 화면
+  if (step === "select-exercise") {
+    return (
+      <main className="min-h-screen epic-gradient relative overflow-hidden">
+        {/* 자세 안내 모달 */}
+        {showSetupGuide && (
+          <SetupGuideModal
+            exercise={selectedExercise}
+            onConfirm={handleSetupConfirm}
+            onCancel={() => setShowSetupGuide(false)}
+          />
+        )}
+
+        <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+          {/* 헤더 */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30 text-sm text-primary mb-4">
+              <Dumbbell className="w-4 h-4" />
+              재활 운동 선택
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">
+              어떤 운동을 하시겠습니까?
+            </h1>
+            <p className="text-muted-foreground">
+              원하는 재활 운동을 선택하세요
+            </p>
+          </div>
+
+          {/* 운동 선택 그리드 */}
+          <ExerciseSelector
+            selectedId={selectedExercise.id}
+            onSelect={handleSelectExercise}
+          />
+
+          {/* 시작 버튼 */}
+          <div className="mt-8 text-center">
+            <Button
+              size="lg"
+              className={`h-14 px-10 text-lg font-semibold transition-all bg-gradient-to-r ${selectedExercise.gradient} text-white shadow-lg hover:scale-105`}
+              onClick={handleStartExercise}
+            >
+              <span className="text-2xl mr-2">{selectedExercise.icon}</span>
+              {selectedExercise.name} 시작
+            </Button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  // 운동 화면
   return (
     <main className="min-h-screen epic-gradient relative overflow-hidden flex flex-col md:flex-row gap-4 p-4 md:p-8">
-      {/* 왼쪽: 카메라 / 포즈 시각화 영역 */}
+      {/* 왼쪽: 카메라 영역 */}
       <section className="relative flex-1 min-h-[320px] md:min-h-[480px]">
         <div className="absolute inset-0 pointer-events-none opacity-30">
           <div
@@ -143,15 +246,23 @@ export default function ExercisePage() {
 
         <Card className="relative h-full w-full backdrop-blur-xl bg-card/30 border border-border/40 rounded-3xl shadow-[0_0_40px_oklch(0.65_0.25_285_/_0.35)] overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between gap-2 relative z-10">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-                <Activity className="w-5 h-5 text-primary" />
-                실시간 재활 운동
-              </CardTitle>
-              <CardDescription>웹캠을 활성화하고, 가이드에 맞춰 천천히 움직여 보세요.</CardDescription>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBackToSelect}
+                className="p-2 hover:bg-muted/40 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                  <span className="text-2xl">{selectedExercise.icon}</span>
+                  {selectedExercise.name}
+                </CardTitle>
+                <CardDescription>{selectedExercise.instruction}</CardDescription>
+              </div>
             </div>
-            <span className="px-3 py-1 rounded-full bg-muted/40 text-xs text-muted-foreground">
-              HearO Pose Tracker
+            <span className={`px-3 py-1 rounded-full bg-gradient-to-r ${selectedExercise.gradient} text-white text-xs`}>
+              {selectedExercise.nameEn}
             </span>
           </CardHeader>
 
@@ -159,11 +270,14 @@ export default function ExercisePage() {
             <div className="relative mt-2 h-[260px] md:h-[360px] rounded-2xl border border-border/40 bg-black/40 overflow-hidden flex items-center justify-center">
               {isCameraReady ? (
                 <Camera
+                  key={cameraKey}
                   onRepCount={handleRepCount}
-                  onScoreUpdate={handleScoreUpdate}
+                  onAngleUpdate={handleAngleUpdate}
                   onTargetReached={handleTargetReached}
+                  onCalibrationComplete={handleCalibrationComplete}
                   isRunning={isRunning}
                   targetReps={targetReps}
+                  exerciseId={selectedExercise.id}
                 />
               ) : (
                 <div className="flex flex-col items-center gap-4">
@@ -173,7 +287,7 @@ export default function ExercisePage() {
                   <Button
                     onClick={startCamera}
                     variant="outline"
-                    className="bg-primary/20 border-primary/50 hover:bg-primary/30"
+                    className={`bg-gradient-to-r ${selectedExercise.gradient} border-0 text-white hover:opacity-90`}
                   >
                     <CameraIcon className="w-4 h-4 mr-2" />
                     카메라 활성화
@@ -182,13 +296,29 @@ export default function ExercisePage() {
               )}
             </div>
 
-            <div className="mt-4 text-xs md:text-sm text-muted-foreground leading-relaxed">
-              {isCameraReady ? (
-                <span className="text-green-400">✓ 카메라 활성화됨 - 포즈 추적 중</span>
-              ) : (
-                "어깨와 허리를 곧게 펴고, 화면 중앙에 위치해주세요."
+            <div className="mt-4 flex items-center justify-between text-xs md:text-sm text-muted-foreground leading-relaxed">
+              <div>
+                {isCameraReady ? (
+                  baselineAngle !== null ? (
+                    <span className="text-green-400">
+                      ✓ 캘리브레이션 {hasSavedCalibration ? "(저장됨)" : ""} - 기준: {baselineAngle}°
+                    </span>
+                  ) : (
+                    <span className="text-yellow-400">⏳ 캘리브레이션 대기 중...</span>
+                  )
+                ) : (
+                  selectedExercise.setup || "카메라를 활성화하세요"
+                )}
+              </div>
+              {isCameraReady && baselineAngle !== null && (
+                <button
+                  onClick={resetCalibration}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  초기화
+                </button>
               )}
-              {" "}무리하지 말고, 통증이 느껴진다면 즉시 중단하세요.
             </div>
           </CardContent>
         </Card>
@@ -247,8 +377,10 @@ export default function ExercisePage() {
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-muted/40 border border-border/20">
-                <p className="text-muted-foreground mb-1">자세 점수</p>
-                <p className="text-lg md:text-2xl font-bold text-accent">{quality}</p>
+                <p className="text-muted-foreground mb-1">현재 각도</p>
+                <p className="text-lg md:text-2xl font-bold text-accent">
+                  {angles ? `${angles.leftElbow}°` : "-"}
+                </p>
               </div>
             </div>
 
@@ -278,12 +410,12 @@ export default function ExercisePage() {
                 {isVoiceGuideOn ? (
                   <>
                     <Volume2 className="w-3 h-3" />
-                    음성 가이드 ON
+                    음성 ON
                   </>
                 ) : (
                   <>
                     <VolumeX className="w-3 h-3" />
-                    음성 가이드 OFF
+                    음성 OFF
                   </>
                 )}
               </button>
@@ -293,7 +425,7 @@ export default function ExercisePage() {
               <Button
                 type="button"
                 onClick={toggleExercise}
-                className="w-full h-11 bg-gradient-to-r from-primary via-accent to-secondary text-primary-foreground font-semibold shadow-[0_0_24px_oklch(0.7_0.25_260_/_0.6)] hover:scale-[1.02] hover:opacity-95 transition-all duration-300"
+                className={`w-full h-11 bg-gradient-to-r ${selectedExercise.gradient} text-white font-semibold shadow-lg hover:scale-[1.02] hover:opacity-95 transition-all duration-300`}
               >
                 {isRunning ? (
                   <>

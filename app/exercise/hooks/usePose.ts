@@ -18,10 +18,8 @@ export type PoseQuality = {
   overall: boolean
 }
 
-// 스켈레톤 연결 정의 (상체 중심 확장)
+// 스켈레톤 연결 정의 (몸통만 - 얼굴 제외)
 const POSE_CONNECTIONS: [number, number][] = [
-  // 얼굴-어깨
-  [0, 11], [0, 12],
   // 어깨
   [11, 12],
   // 왼팔
@@ -30,12 +28,13 @@ const POSE_CONNECTIONS: [number, number][] = [
   [12, 14], [14, 16],
   // 몸통
   [11, 23], [12, 24], [23, 24],
-  // 다리 (상단만)
-  [23, 25], [24, 26],
+  // 다리
+  [23, 25], [25, 27], // 왼쪽 다리
+  [24, 26], [26, 28], // 오른쪽 다리
 ]
 
-// 주요 랜드마크 인덱스
-const KEY_LANDMARKS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26]
+// 주요 랜드마크 인덱스 (11번부터 - 얼굴 0-10 제외)
+const KEY_LANDMARKS = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
 
 export function usePose(
   videoRef: RefObject<HTMLVideoElement | null>,
@@ -52,53 +51,41 @@ export function usePose(
 
   // 스무딩을 위한 이전 랜드마크
   const prevLandmarksRef = useRef<Landmark[] | null>(null)
-  const smoothingFactor = 0.7 // 0 = 완전히 새 값, 1 = 완전히 이전 값
+  const lightingCheckRef = useRef(0)
+  const smoothingFactor = 0.7
 
   // 초기화
   useEffect(() => {
+    let mounted = true
     async function init() {
       try {
-        landmarkerRef.current = await createPoseLandmarker()
-        setIsReady(true)
+        const landmarker = await createPoseLandmarker()
+        if (mounted) {
+          landmarkerRef.current = landmarker
+          setIsReady(true)
+        }
       } catch (error) {
         console.error("MediaPipe 초기화 실패:", error)
       }
     }
     init()
+    return () => { mounted = false }
   }, [])
 
-  // 랜드마크 스무딩 (떨림 감소)
-  const smoothLandmarks = useCallback((newLandmarks: Landmark[]): Landmark[] => {
-    const prev = prevLandmarksRef.current
+  // detectPose를 useRef로 안정화 (무한 루프 방지)
+  const detectPoseRef = useRef<() => void>(() => {})
 
-    if (!prev || prev.length !== newLandmarks.length) {
-      prevLandmarksRef.current = newLandmarks
-      return newLandmarks
-    }
-
-    const smoothed = newLandmarks.map((lm, i) => {
-      const prevLm = prev[i]
-      return {
-        x: prevLm.x * smoothingFactor + lm.x * (1 - smoothingFactor),
-        y: prevLm.y * smoothingFactor + lm.y * (1 - smoothingFactor),
-        z: prevLm.z * smoothingFactor + lm.z * (1 - smoothingFactor),
-        visibility: lm.visibility,
-      }
-    })
-
-    prevLandmarksRef.current = smoothed
-    return smoothed
-  }, [])
-
-  // 조명 체크 (주기적으로)
-  const lightingCheckRef = useRef(0)
-
-  const detectPose = useCallback(async () => {
+  detectPoseRef.current = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
     const landmarker = landmarkerRef.current
 
     if (!video || !canvas || !landmarker) return
+
+    // 비디오가 충분히 로드되었는지 확인
+    if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+      return
+    }
 
     // 조명 체크 (30프레임마다)
     lightingCheckRef.current++
@@ -110,34 +97,57 @@ export function usePose(
       }))
     }
 
-    landmarker.detectForVideo(video, performance.now(), (result: any) => {
-      const rawPose: Landmark[] | null = result?.landmarks?.[0] || null
+    try {
+      landmarker.detectForVideo(video, performance.now(), (result: any) => {
+        const rawPose: Landmark[] | null = result?.landmarks?.[0] || null
 
-      if (rawPose) {
-        // 스무딩 적용
-        const smoothedPose = smoothLandmarks(rawPose)
-        setLandmarks(smoothedPose)
+        if (rawPose) {
+          // 스무딩 적용 (인라인)
+          const prev = prevLandmarksRef.current
+          let smoothedPose: Landmark[]
 
-        // 랜드마크 품질 체크
-        const landmarkResult = checkLandmarkQuality(smoothedPose)
-        setQuality(prev => ({
-          ...prev,
-          landmarks: { isGood: landmarkResult.isGood, message: landmarkResult.message },
-          overall: prev.lighting.isGood && landmarkResult.isGood
-        }))
+          if (!prev || prev.length !== rawPose.length) {
+            smoothedPose = rawPose
+          } else {
+            smoothedPose = rawPose.map((lm, i) => ({
+              x: prev[i].x * smoothingFactor + lm.x * (1 - smoothingFactor),
+              y: prev[i].y * smoothingFactor + lm.y * (1 - smoothingFactor),
+              z: prev[i].z * smoothingFactor + lm.z * (1 - smoothingFactor),
+              visibility: lm.visibility,
+            }))
+          }
+          prevLandmarksRef.current = smoothedPose
 
-        drawSkeleton(canvas, smoothedPose)
-      } else {
-        setLandmarks(null)
-        setQuality(prev => ({
-          ...prev,
-          landmarks: { isGood: false, message: "포즈를 감지할 수 없습니다." },
-          overall: false
-        }))
-        drawSkeleton(canvas, null)
-      }
-    })
-  }, [videoRef, canvasRef, smoothLandmarks])
+          setLandmarks(smoothedPose)
+
+          // 랜드마크 품질 체크
+          const landmarkResult = checkLandmarkQuality(smoothedPose)
+          setQuality(prev => ({
+            ...prev,
+            landmarks: { isGood: landmarkResult.isGood, message: landmarkResult.message },
+            overall: prev.lighting.isGood && landmarkResult.isGood
+          }))
+
+          drawSkeleton(canvas, smoothedPose)
+        } else {
+          setLandmarks(null)
+          setQuality(prev => ({
+            ...prev,
+            landmarks: { isGood: false, message: "포즈를 감지할 수 없습니다." },
+            overall: false
+          }))
+          drawSkeleton(canvas, null)
+        }
+      })
+    } catch {
+      // 오류 발생 시 조용히 스킵
+    }
+  }
+
+  // 안정적인 detectPose 함수 반환
+  const detectPose = useCallback(() => {
+    detectPoseRef.current()
+  }, [])
 
   return {
     landmarks,
